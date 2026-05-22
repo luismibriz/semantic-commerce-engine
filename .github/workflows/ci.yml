@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          # Build on the minimum supported version, not the latest.
+          php-version: '8.3'
+          extensions: ctype, mbstring, intl, pdo_pgsql
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Coding standards (php-cs-fixer)
+        run: composer cs
+
+      - name: Static analysis (PHPStan)
+        run: composer phpstan
+
+      - name: Tests — unit, application, functional
+        # These suites need no infrastructure: the domain and use cases run
+        # against in-memory doubles.
+        run: vendor/bin/phpunit --testsuite unit,application,functional
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      database:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        ports:
+          - 9200:9200
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: ctype, mbstring, intl, pdo_pgsql
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Wait for Elasticsearch
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:9200/_cluster/health >/dev/null && exit 0
+            sleep 3
+          done
+          echo "Elasticsearch did not become ready" >&2
+          exit 1
+
+      - name: Integration tests
+        run: vendor/bin/phpunit --testsuite integration
+        env:
+          DATABASE_URL: 'postgresql://app:app@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8'
+          ELASTICSEARCH_DSN: 'http://127.0.0.1:9200'
