@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!-- Money is mapped as a Doctrine embeddable; with the "price_" prefix it
+         materialises as the price_amount / price_currency columns. -->
+    <embeddable name="App\Catalog\Domain\Model\Money">
+        <field name="amount" type="integer" column="amount"/>
+        <field name="currency" type="string" length="3" column="currency"/>
+    </embeddable>
+</doctrine-mapping>

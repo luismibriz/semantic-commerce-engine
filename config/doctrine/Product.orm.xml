@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+        Persistence mapping for the Product aggregate. It lives here, outside
+        the domain, so the entity itself carries no ORM metadata.
+    -->
+    <entity name="App\Catalog\Domain\Model\Product" table="products">
+        <id name="id" type="product_id" column="id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <field name="name" type="product_name" column="name"/>
+        <field name="description" type="product_description" column="description"/>
+        <field name="embedding" type="embedding" column="embedding" nullable="true"/>
+        <field name="indexedAt" type="datetime_immutable" column="indexed_at" nullable="true"/>
+
+        <embedded name="price" class="App\Catalog\Domain\Model\Money" column-prefix="price_"/>
+    </entity>
+</doctrine-mapping>
