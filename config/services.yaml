@@ -1,0 +1,85 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            string $indexName: '%env(ELASTICSEARCH_INDEX)%'
+            int $dimensions: '%env(int:EMBEDDING_DIMENSIONS)%'
+            string $apiKey: '%env(OPENAI_API_KEY)%'
+            string $model: '%env(OPENAI_EMBEDDING_MODEL)%'
+            string $backend: '%env(SEARCH_BACKEND)%'
+
+    # Auto-register every class as a service. The domain holds only value
+    # objects, entities and interfaces, so it is excluded wholesale; the
+    # command/query DTOs carry scalars and are not services either.
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Catalog/Domain/'
+            - '../src/Catalog/Application/Command/IndexProduct/IndexProductCommand.php'
+            - '../src/Catalog/Application/Command/RemoveProduct/RemoveProductCommand.php'
+            - '../src/Catalog/Application/Query/SearchProducts/SearchProductsQuery.php'
+            - '../src/Catalog/Application/Query/SearchProducts/SearchProductsResponse.php'
+            - '../src/Catalog/Application/Query/SearchProducts/ProductView.php'
+
+    # Controllers need the controller.service_arguments tag so Symfony can
+    # resolve action arguments (Request, ...).
+    App\Catalog\Infrastructure\Http\:
+        resource: '../src/Catalog/Infrastructure/Http/'
+        tags: ['controller.service_arguments']
+
+    # --- Ports -> adapters -------------------------------------------------
+    App\Catalog\Domain\Repository\ProductRepository:
+        '@App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
+    # Vector-search ports resolve to the backend chosen by SEARCH_BACKEND
+    # (elasticsearch | pgvector). See SearchBackendFactory.
+    App\Catalog\Domain\Search\SemanticProductSearch:
+        factory: ['@App\Catalog\Infrastructure\Search\SearchBackendFactory', 'semanticSearch']
+    App\Catalog\Domain\Search\ProductSearchIndex:
+        factory: ['@App\Catalog\Infrastructure\Search\SearchBackendFactory', 'searchIndex']
+    App\Catalog\Infrastructure\Search\SearchIndexInstaller:
+        factory: ['@App\Catalog\Infrastructure\Search\SearchBackendFactory', 'installer']
+    App\Catalog\Domain\Service\Clock:
+        '@App\Catalog\Infrastructure\Clock\SystemClock'
+    App\Catalog\Application\Bus\CommandBus:
+        '@App\Catalog\Infrastructure\Bus\MessengerCommandBus'
+    App\Catalog\Application\Bus\QueryBus:
+        '@App\Catalog\Infrastructure\Bus\MessengerQueryBus'
+    App\Catalog\Application\Bus\DomainEventBus:
+        '@App\Catalog\Infrastructure\Bus\MessengerDomainEventBus'
+
+    # The active embedding provider is chosen at runtime from configuration.
+    App\Catalog\Domain\Service\EmbeddingGenerator:
+        factory: ['@App\Catalog\Infrastructure\Embedding\EmbeddingGeneratorFactory', 'create']
+        arguments:
+            $provider: '%env(EMBEDDING_PROVIDER)%'
+
+    # Elasticsearch low-level client.
+    Elastic\Elasticsearch\Client:
+        factory: ['App\Catalog\Infrastructure\Search\ElasticsearchClientFactory', 'create']
+        arguments:
+            $dsn: '%env(ELASTICSEARCH_DSN)%'
+
+    # --- CQRS handlers: bound to their dedicated Messenger bus -------------
+    App\Catalog\Application\Command\IndexProduct\IndexProductHandler:
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+
+    App\Catalog\Application\Query\SearchProducts\SearchProductsHandler:
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+
+    App\Catalog\Application\Command\RemoveProduct\RemoveProductHandler:
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+
+    App\Catalog\Infrastructure\Event\ProjectProductToSearchIndex:
+        tags:
+            - { name: messenger.message_handler, bus: event.bus }
+
+    App\Catalog\Infrastructure\Event\RemoveProductFromSearchIndex:
+        tags:
+            - { name: messenger.message_handler, bus: event.bus }

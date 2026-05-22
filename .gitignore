@@ -1,0 +1,9 @@
+/vendor/
+/var/
+/.env.local
+/.env.*.local
+/.phpunit.cache/
+/.phpunit.result.cache
+/.php-cs-fixer.cache
+/phpstan.cache
+/.claude/settings.local.json

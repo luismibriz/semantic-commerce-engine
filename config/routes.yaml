@@ -1,0 +1,5 @@
+catalog_http:
+    resource:
+        path: ../src/Catalog/Infrastructure/Http/
+        namespace: App\Catalog\Infrastructure\Http
+    type: attribute

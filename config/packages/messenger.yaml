@@ -1,0 +1,19 @@
+framework:
+    messenger:
+        # CQRS: one bus per responsibility. Commands and queries are handled
+        # synchronously and in-process; nothing is queued.
+        default_bus: command.bus
+        buses:
+            command.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: false
+            query.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: false
+            event.bus:
+                # Domain events may legitimately have no subscriber.
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: true

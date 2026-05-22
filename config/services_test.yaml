@@ -1,0 +1,27 @@
+# Test-environment service overrides.
+#
+# Functional tests (tests/Functional) drive the full HTTP stack — routing,
+# controllers, the CQRS buses, handlers, the exception listener, JSON
+# serialization — but must stay hermetic and fast. So the infrastructure
+# adapters are swapped for the in-memory test doubles: no PostgreSQL, no
+# Elasticsearch, fully deterministic.
+#
+# Integration tests (tests/Integration) bypass these aliases: they fetch the
+# real Doctrine/Elasticsearch services directly to exercise the adapters.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Tests\Doubles\InMemoryProductRepository: ~
+    App\Tests\Doubles\InMemorySemanticProductSearch: ~
+
+    App\Catalog\Domain\Repository\ProductRepository:
+        alias: App\Tests\Doubles\InMemoryProductRepository
+
+    # One shared instance backs both search ports, so a projection written via
+    # ProductSearchIndex is visible to the SemanticProductSearch query side.
+    App\Catalog\Domain\Search\SemanticProductSearch:
+        alias: App\Tests\Doubles\InMemorySemanticProductSearch
+    App\Catalog\Domain\Search\ProductSearchIndex:
+        alias: App\Tests\Doubles\InMemorySemanticProductSearch

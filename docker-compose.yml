@@ -1,0 +1,67 @@
+services:
+    app:
+        build: .
+        environment:
+            SERVER_NAME: ':80'
+            APP_ENV: dev
+            APP_DEBUG: '1'
+            DATABASE_URL: 'postgresql://app:app@database:5432/app?serverVersion=16&charset=utf8'
+            # Vector-search backend: elasticsearch (default) or pgvector.
+            SEARCH_BACKEND: '${SEARCH_BACKEND:-elasticsearch}'
+            ELASTICSEARCH_DSN: 'http://elasticsearch:9200'
+            ELASTICSEARCH_INDEX: products
+            # Defaults to the offline hashing provider so the stack runs with
+            # no API key. Export OPENAI_API_KEY and set EMBEDDING_PROVIDER=openai
+            # for real semantic search.
+            EMBEDDING_PROVIDER: '${EMBEDDING_PROVIDER:-hashing}'
+            EMBEDDING_DIMENSIONS: '1536'
+            OPENAI_API_KEY: '${OPENAI_API_KEY:-}'
+            OPENAI_EMBEDDING_MODEL: 'text-embedding-3-small'
+        ports:
+            - '8080:80'
+        depends_on:
+            database:
+                condition: service_healthy
+            elasticsearch:
+                condition: service_healthy
+
+    database:
+        # pgvector/pgvector ships PostgreSQL 16 + the pgvector extension. It is
+        # a drop-in Postgres for the write model, and also lets SEARCH_BACKEND
+        # be switched to pgvector without changing the image.
+        image: pgvector/pgvector:pg16
+        environment:
+            POSTGRES_USER: app
+            POSTGRES_PASSWORD: app
+            POSTGRES_DB: app
+        # Exposed on the host so the integration test suite can run locally.
+        ports:
+            - '5432:5432'
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U app -d app']
+            interval: 5s
+            timeout: 5s
+            retries: 20
+        volumes:
+            - db-data:/var/lib/postgresql/data
+
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+        environment:
+            discovery.type: single-node
+            xpack.security.enabled: 'false'
+            ES_JAVA_OPTS: '-Xms512m -Xmx512m'
+        # Exposed on the host so the integration test suite can run locally.
+        ports:
+            - '9200:9200'
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -s http://localhost:9200/_cluster/health >/dev/null || exit 1']
+            interval: 10s
+            timeout: 10s
+            retries: 20
+        volumes:
+            - es-data:/usr/share/elasticsearch/data
+
+volumes:
+    db-data:
+    es-data:

@@ -1,0 +1,22 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        # Custom DBAL types map domain value objects onto native columns,
+        # keeping Doctrine annotations out of the domain model.
+        types:
+            product_id: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductIdType
+            product_name: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductNameType
+            product_description: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductDescriptionType
+            embedding: App\Catalog\Infrastructure\Persistence\Doctrine\Type\EmbeddingType
+
+    orm:
+        auto_generate_proxy_classes: true
+        auto_mapping: false
+        mappings:
+            Catalog:
+                type: xml
+                # XML mapping lives outside the domain so the entity stays pure.
+                dir: '%kernel.project_dir%/config/doctrine'
+                prefix: 'App\Catalog\Domain\Model'
+                alias: Catalog
+                is_bundle: false

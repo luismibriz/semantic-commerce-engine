@@ -1,0 +1,63 @@
+{
+    "name": "luismibriz/semantic-commerce-engine",
+    "description": "Semantic Discovery Engine — intent-based product search built with Symfony, Hexagonal Architecture, DDD and CQRS.",
+    "type": "project",
+    "license": "MIT",
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=8.3",
+        "ext-ctype": "*",
+        "ext-mbstring": "*",
+        "doctrine/dbal": "^4.2",
+        "doctrine/doctrine-bundle": "^2.13",
+        "doctrine/doctrine-migrations-bundle": "^3.4",
+        "doctrine/orm": "^3.3",
+        "elasticsearch/elasticsearch": "^8.15",
+        "symfony/console": "^7.4",
+        "symfony/dotenv": "^7.4",
+        "symfony/framework-bundle": "^7.4",
+        "symfony/http-client": "^7.4",
+        "symfony/messenger": "^7.4",
+        "symfony/runtime": "^7.4",
+        "symfony/uid": "^7.4",
+        "symfony/var-exporter": "^7.4",
+        "symfony/yaml": "^7.4"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.68",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpunit/phpunit": "^11.5",
+        "symfony/browser-kit": "^7.4",
+        "symfony/dom-crawler": "^7.4",
+        "symfony/phpunit-bridge": "^7.4"
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true
+        },
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse --memory-limit=512M",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "quality": [
+            "@cs",
+            "@phpstan",
+            "@test"
+        ]
+    }
+}
