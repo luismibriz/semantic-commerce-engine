@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: Semantic Discovery Engine API
+  description: >-
+    Intent-based product search. Products are indexed with an embedding;
+    queries in natural language return products ranked by semantic relevance.
+  version: 1.0.0
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local Docker environment
+
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      operationId: health
+      description: Readiness probe. Pings PostgreSQL, the source of truth.
+      responses:
+        '200':
+          description: The service and its dependencies are up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: A required dependency is unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /api/products:
+    post:
+      summary: Index a product
+      description: >-
+        Registers a product and generates its embedding so it becomes
+        discoverable. Idempotent by `id`: sending a known `id` updates the
+        product and re-indexes it. If `id` is omitted, one is generated.
+      operationId: indexProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexProductRequest'
+            examples:
+              thermalJersey:
+                value:
+                  name: Maillot térmico de invierno
+                  description: >-
+                    Camiseta térmica de manga larga, color rojo, para
+                    ciclismo en condiciones de frío.
+                  price:
+                    amount: 5999
+                    currency: EUR
+      responses:
+        '201':
+          description: The product was indexed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          description: The embedding provider is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/products/{id}:
+    delete:
+      summary: Remove a product
+      description: >-
+        Deletes a product from the catalog and evicts it from the search
+        read model.
+      operationId: removeProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: The product was removed.
+        '404':
+          description: No product exists with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/products/search:
+    get:
+      summary: Search products by intent
+      description: >-
+        Embeds the query with the same model used at index time and returns
+        the most semantically relevant products, ranked by descending score.
+      operationId: searchProducts
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Natural-language search query.
+          schema:
+            type: string
+            maxLength: 500
+            example: camiseta roja para el frío
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results (1-50, default 10).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Ranked search results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  schemas:
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: integer
+          minimum: 0
+          description: Amount in minor units (e.g. cents). Never a float.
+          example: 5999
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: ISO-4217 currency code.
+          example: EUR
+
+    IndexProductRequest:
+      type: object
+      required: [name, description, price]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional. Provide it to update an existing product.
+        name:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+          maxLength: 5000
+        price:
+          $ref: '#/components/schemas/Money'
+
+    ProductMatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        score:
+          type: number
+          format: float
+          minimum: -1
+          maximum: 1
+          description: Cosine similarity between query and product embeddings.
+
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductMatch'
+
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid input (a domain invariant was violated).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

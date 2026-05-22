@@ -1,0 +1,342 @@
+{
+  "info": {
+    "name": "Semantic Discovery Engine",
+    "description": "Siroko Senior Code Challenge — Option B. Intent-based product search.\n\nSet the `baseUrl` collection variable (default http://localhost:8080).\n\nRun the requests top to bottom: the three \"Index product\" requests seed the catalog, then \"Search\" returns them ranked by semantic relevance. The last folder exercises the validation error paths (HTTP 400).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "lastProductId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status is ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Index products",
+      "item": [
+        {
+          "name": "Index product — Maillot térmico",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maillot térmico de invierno\",\n  \"description\": \"Camiseta térmica de manga larga, color rojo, para ciclismo en condiciones de frío extremo.\",\n  \"price\": { \"amount\": 5999, \"currency\": \"EUR\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const id = pm.response.json().id;",
+                  "pm.test('returns a product id', () => pm.expect(id).to.be.a('string'));",
+                  "pm.collectionVariables.set('lastProductId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Index product — Cortavientos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chaqueta cortavientos ligera\",\n  \"description\": \"Chaqueta impermeable y cortavientos para proteger del frío y la lluvia en rutas de ciclismo.\",\n  \"price\": { \"amount\": 8950, \"currency\": \"EUR\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Index product — Bidón de agua",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bidón de agua 750 ml\",\n  \"description\": \"Bidón de plástico azul de 750 ml, sin BPA, para hidratación durante el entrenamiento.\",\n  \"price\": { \"amount\": 999, \"currency\": \"EUR\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-index product (idempotent update)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{lastProductId}}\",\n  \"name\": \"Maillot térmico de invierno (edición 2026)\",\n  \"description\": \"Camiseta térmica de manga larga, color rojo, tejido mejorado para ciclismo en frío.\",\n  \"price\": { \"amount\": 6499, \"currency\": \"EUR\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('same id is returned (no duplicate)', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('lastProductId')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search — ropa para el frío",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/search?q=ropa para el frío",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "search"],
+              "query": [{ "key": "q", "value": "ropa para el frío" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns ranked results', () => pm.expect(body.results).to.be.an('array'));",
+                  "pm.test('results are sorted by descending score', () => {",
+                  "  const scores = body.results.map(r => r.score);",
+                  "  const sorted = [...scores].sort((a, b) => b - a);",
+                  "  pm.expect(scores).to.eql(sorted);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search — with limit",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/search?q=hidratación entrenamiento&limit=2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "search"],
+              "query": [
+                { "key": "q", "value": "hidratación entrenamiento" },
+                { "key": "limit", "value": "2" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('at most 2 results', () => pm.expect(pm.response.json().results.length).to.be.at.most(2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Validation errors (sad paths)",
+      "item": [
+        {
+          "name": "Index — invalid currency (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto inválido\",\n  \"description\": \"La divisa no es un código ISO-4217 válido.\",\n  \"price\": { \"amount\": 1000, \"currency\": \"EURO\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns an error message', () => pm.expect(pm.response.json().error).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Index — negative price (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto inválido\",\n  \"description\": \"El importe no puede ser negativo.\",\n  \"price\": { \"amount\": -500, \"currency\": \"EUR\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search — empty query (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/search?q=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "search"],
+              "query": [{ "key": "q", "value": "" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search — limit out of range (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/search?q=camiseta&limit=999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "search"],
+              "query": [
+                { "key": "q", "value": "camiseta" },
+                { "key": "limit", "value": "999" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
