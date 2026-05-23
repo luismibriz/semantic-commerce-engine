@@ -42,7 +42,7 @@ docker compose up --build -d
 curl 'http://localhost:8080/api/products/search?q=ropa%20roja%20para%20el%20fr%C3%ADo&limit=3'
 
 # 3. Quality gate completo — php-cs-fixer + PHPStan (nivel 6) + PHPUnit
-#    (84 tests, 156 aserciones, incl. integration contra Postgres + ES).
+#    (87 tests, 171 aserciones, incl. integration contra Postgres + ES).
 docker compose exec app composer quality
 
 # 4. Benchmark de latencia end-to-end por backend de búsqueda.
@@ -54,6 +54,50 @@ El paso 1 deja la API en `http://localhost:8080` con catálogo demo precargado
 productos). Los tests del paso 3 corren contra una base de datos separada
 (`app_test`, creada automáticamente la primera vez), así que no contaminan el
 catálogo que estás probando con `curl`.
+
+### Variantes para levantar
+
+**Con embeddings reales de OpenAI** — por defecto se usa el generador offline
+`hashing` (determinista, sin API key). Para búsqueda semántica real:
+
+```bash
+EMBEDDING_PROVIDER=openai OPENAI_API_KEY=sk-... docker compose up --build -d
+```
+
+**Cambiar el almacén de vectores** — por defecto Elasticsearch
+(`dense_vector` + `knn`). Para usar PostgreSQL + `pgvector` (HNSW + coseno)
+basta una variable, sin más cambios; el dominio, los casos de uso, los
+endpoints y los tests no se tocan:
+
+```bash
+# Elasticsearch (por defecto, equivalente a no pasar la variable)
+SEARCH_BACKEND=elasticsearch docker compose up --build -d
+
+# PostgreSQL + pgvector
+SEARCH_BACKEND=pgvector docker compose up --build -d
+```
+
+Las dos variantes se combinan: `SEARCH_BACKEND=pgvector EMBEDDING_PROVIDER=openai
+OPENAI_API_KEY=sk-... docker compose up --build -d`. La discusión del
+compromiso entre backends está en [`ai/DECISIONS.md`](ai/DECISIONS.md), y los
+números medidos en cada uno en [Rendimiento](#rendimiento).
+
+### Probar el API con Postman
+
+La colección [`postman/semantic-commerce-engine.postman_collection.json`](postman/semantic-commerce-engine.postman_collection.json)
+trae los endpoints listos para usar contra `http://localhost:8080` (variable
+de colección `baseUrl`). Cubre:
+
+- `Health` — sonda de disponibilidad.
+- `Index products` — indexar tres productos y reindexarlos (idempotente).
+- `Search` — dos búsquedas semánticas con resultados ordenados por relevancia.
+- `Validation errors (sad paths)` — cuatro requests que disparan los `400`
+  documentados (divisa inválida, precio negativo, query vacía, `limit` fuera
+  de rango).
+
+Importa el JSON en Postman y lanza los requests de arriba abajo; los tests
+embebidos verifican el contrato (códigos HTTP, forma del JSON, presencia de
+`score`, etc.).
 
 Las siguientes secciones desarrollan cada bloque.
 
@@ -233,7 +277,7 @@ docker compose exec app composer test       # suite completa
 docker compose exec app composer quality    # cs + phpstan + tests
 ```
 
-**84 tests, 156 aserciones — en verde.** La suite tiene cuatro capas:
+**87 tests, 171 aserciones — en verde.** La suite tiene cuatro capas:
 
 | Suite         | Qué cubre                                                | Infraestructura             |
 | ------------- | -------------------------------------------------------- | --------------------------- |
