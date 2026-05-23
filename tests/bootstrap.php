@@ -16,6 +16,17 @@ $_ENV['APP_ENV'] = 'test';
 $_SERVER['APP_ENV'] = 'test';
 putenv('APP_ENV=test');
 
+// Same story for the database: the `app` container exports DATABASE_URL
+// pointing at the production-side `app` database. If we let it through, the
+// integration tests would drop and recreate the schema on the database the
+// running application uses. We reroute to DATABASE_URL_TEST (set by
+// docker-compose for the `app` service) when present.
+if (false !== ($testDatabaseUrl = getenv('DATABASE_URL_TEST'))) {
+    $_ENV['DATABASE_URL'] = $testDatabaseUrl;
+    $_SERVER['DATABASE_URL'] = $testDatabaseUrl;
+    putenv('DATABASE_URL='.$testDatabaseUrl);
+}
+
 // Functional and integration tests boot the Symfony kernel: bootEnv loads
 // .env and then .env.test.
 (new Dotenv())->bootEnv(\dirname(__DIR__).'/.env');
