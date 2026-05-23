@@ -9,7 +9,8 @@
          beStrictAboutOutputDuringTests="true">
     <php>
         <ini name="display_errors" value="1"/>
-        <server name="APP_ENV" value="test" force="true"/>
+        <!-- APP_ENV is pinned to "test" in tests/bootstrap.php so it cannot
+             be overridden by a container that exports APP_ENV=dev. -->
         <server name="KERNEL_CLASS" value="App\Kernel"/>
         <server name="SHELL_VERBOSITY" value="-1"/>
     </php>
