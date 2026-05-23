@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
 
+# Authenticate Composer against GitHub so the 60 req/h anonymous rate limit
+# does not throttle dependency downloads (~120 packages). The GITHUB_TOKEN
+# is injected automatically by Actions and lifts the limit to ~5000 req/h.
+env:
+  COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+
 jobs:
   quality:
     name: Quality gate
