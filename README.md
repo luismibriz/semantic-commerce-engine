@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Semantic Commerce Engine
 
 AI-powered semantic product discovery engine for ecommerce platforms.
@@ -318,4 +317,4 @@ desarrollo asistido por IA:
 ## Licencia
 
 MIT.
->>>>>>> 23a9dfb (docs: README, OpenAPI spec, Postman collection and design notes)
+
