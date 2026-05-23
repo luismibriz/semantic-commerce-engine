@@ -13,6 +13,7 @@ This project is licensed under the MIT License.
 This is an independent portfolio project focused on backend architecture, semantic ecommerce search and AI-assisted software development.
 
 It is not affiliated with any brand, company or recruitment process.
+
 ---
 
 ## Índice
@@ -234,7 +235,7 @@ composer quality
 ```
 
 La integración continua (`.github/workflows/ci.yml`) ejecuta el quality gate
-sobre PHP 8.3 más la suite de integración contra contenedores reales de
+sobre PHP 8.4 más la suite de integración contra contenedores reales de
 PostgreSQL y Elasticsearch, en cada push. El estado se refleja en el badge de
 CI al principio de este README.
 
@@ -311,10 +312,3 @@ desarrollo asistido por IA:
 - [`ai/agents/`](ai/agents/) — un agente de revisión de arquitectura a medida.
 - [`CLAUDE.md`](CLAUDE.md) — las reglas que mantienen coherente el código
   generado.
-
----
-
-## Licencia
-
-MIT.
-
