@@ -18,6 +18,7 @@ It is not affiliated with any brand, company or recruitment process.
 
 ## Índice
 
+- [Evaluación rápida](#evaluación-rápida)
 - [Arquitectura](#arquitectura)
 - [Modelado del dominio](#modelado-del-dominio)
 - [API / OpenAPI](#api)
@@ -25,6 +26,36 @@ It is not affiliated with any brand, company or recruitment process.
 - [Ejecutar los tests](#ejecutar-los-tests)
 - [Rendimiento](#rendimiento)
 - [Documentación de diseño](#documentación-de-diseño)
+
+---
+
+## Evaluación rápida
+
+Cuatro comandos para revisar el proyecto sin leer todo el README. Requisitos:
+Docker con Compose; nada más (ni PHP ni Composer en el host).
+
+```bash
+# 1. Levantar el stack y sembrar un catálogo demo de 12 productos.
+docker compose up --build -d
+
+# 2. Probar la búsqueda semántica con una consulta intencional.
+curl 'http://localhost:8080/api/products/search?q=ropa%20roja%20para%20el%20fr%C3%ADo&limit=3'
+
+# 3. Quality gate completo — php-cs-fixer + PHPStan (nivel 6) + PHPUnit
+#    (84 tests, 156 aserciones, incl. integration contra Postgres + ES).
+docker compose exec app composer quality
+
+# 4. Benchmark de latencia end-to-end por backend de búsqueda.
+docker compose exec app php bin/console app:benchmark --products=300 --searches=300
+```
+
+El paso 1 deja la API en `http://localhost:8080` con catálogo demo precargado
+(`docker/entrypoint.sh` ejecuta migraciones, prepara el índice y siembra
+productos). Los tests del paso 3 corren contra una base de datos separada
+(`app_test`, creada automáticamente la primera vez), así que no contaminan el
+catálogo que estás probando con `curl`.
+
+Las siguientes secciones desarrollan cada bloque.
 
 ---
 
@@ -164,8 +195,9 @@ docker compose up --build
 ```
 
 Al arrancar, el contenedor de la aplicación espera a PostgreSQL, ejecuta las
-migraciones de base de datos y crea el índice de búsqueda del backend
-seleccionado. La API queda en **http://localhost:8080**.
+migraciones, crea el índice de búsqueda del backend seleccionado y siembra
+un catálogo demo de 12 productos (`app:seed`, idempotente). La API queda en
+**http://localhost:8080** con datos listos para consultar.
 
 Funciona **sin API key**: el valor por defecto `EMBEDDING_PROVIDER=hashing`
 usa el generador de embeddings offline y determinista. Para búsqueda semántica
@@ -194,12 +226,12 @@ Hay atajos en el `Makefile` (`make up`, `make test`, `make reindex`,
 
 ## Ejecutar los tests
 
-```bash
-composer install
-composer test          # la suite completa
-```
+Con el stack levantado (`docker compose up --build -d`), basta con:
 
-O dentro del contenedor: `docker compose exec app vendor/bin/phpunit`.
+```bash
+docker compose exec app composer test       # suite completa
+docker compose exec app composer quality    # cs + phpstan + tests
+```
 
 **84 tests, 156 aserciones — en verde.** La suite tiene cuatro capas:
 
@@ -215,23 +247,24 @@ dominio y los casos de uso se ejercitan contra dobles en memoria, y en el
 entorno de test los tests funcionales también sustituyen los adaptadores de
 infraestructura por esos dobles (ver `config/services_test.yaml`). La suite
 `integration` **se salta a sí misma** cuando no hay base de datos o
-Elasticsearch accesibles, así que `composer test` queda en verde en cualquier
-sitio.
+Elasticsearch accesibles, así que `composer test` queda en verde también
+fuera del contenedor.
 
-Para ejecutar la suite de integración en local, levanta el stack y crea una
-vez la base de datos de test:
+La base de datos de tests (`app_test`) se crea automáticamente la primera vez
+que arranca el servicio `database` (ver `docker/postgres-init.sh`), y
+`tests/bootstrap.php` reenruta `DATABASE_URL` a `DATABASE_URL_TEST` para que
+los tests de integración **nunca toquen** la base `app` que usa la
+aplicación. Para correr solo la suite de integración:
 
 ```bash
-docker compose up -d
-docker compose exec database psql -U app -c 'CREATE DATABASE app_test'
-vendor/bin/phpunit --testsuite integration
+docker compose exec app vendor/bin/phpunit --testsuite integration
 ```
 
 Quality gate completo — **php-cs-fixer + PHPStan (nivel 6, sin errores) +
 PHPUnit**, los tres deben pasar:
 
 ```bash
-composer quality
+docker compose exec app composer quality
 ```
 
 La integración continua (`.github/workflows/ci.yml`) ejecuta el quality gate
