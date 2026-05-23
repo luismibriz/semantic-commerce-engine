@@ -105,10 +105,38 @@ Las siguientes secciones desarrollan cada bloque.
 
 ## Arquitectura
 
-dependencias apuntan **hacia dentro**; el dominio no conoce el exterior.
+**Arquitectura hexagonal.** Las dependencias apuntan **hacia dentro**; el
+dominio no conoce el exterior.
 
 ```
+  Infrastructure
+  HTTP · Console · Doctrine · Elasticsearch · pgvector ·
+  OpenAI · Hashing · Symfony Messenger
+      │
+      ▼  implementan los puertos
+  ┌───────────────────────────────────┐
+  │ Application                       │
+  │   IndexProductHandler             │
+  │   RemoveProductHandler            │
+  │   SearchProductsHandler           │
+  │   Command / Query / Event buses   │
+  │                                   │
+  │   ┌───────────────────────────┐   │
+  │   │ Domain                    │   │
+  │   │   Product, Money,         │   │
+  │   │   EmbeddingVector,        │   │
+  │   │   SearchQuery, …          │   │
+  │   │                           │   │
+  │   │ Ports:                    │   │
+  │   │   ProductRepository       │   │
+  │   │   EmbeddingGenerator      │   │
+  │   │   SemanticProductSearch   │   │
+  │   │   ProductSearchIndex      │   │
+  │   │   Clock                   │   │
+  │   └───────────────────────────┘   │
+  └───────────────────────────────────┘
 ```
+
 **CQRS con un read store separado:**
 
 - **Modelo de escritura** — el agregado `Product`, persistido en
