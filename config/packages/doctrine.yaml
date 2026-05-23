@@ -8,6 +8,13 @@ doctrine:
             product_name: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductNameType
             product_description: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductDescriptionType
             embedding: App\Catalog\Infrastructure\Persistence\Doctrine\Type\EmbeddingType
+        # pgvector's `vector` column is not part of the ORM model — it lives in
+        # the read-side `product_search_index` table, written via raw SQL. The
+        # mapping lets Doctrine introspect schemas that contain it without
+        # raising "Unknown database type vector", e.g. SchemaTool during the
+        # integration tests after the pgvector backend has been exercised.
+        mapping_types:
+            vector: string
 
     orm:
         auto_generate_proxy_classes: true
