@@ -15,5 +15,8 @@ until php bin/console search:setup >/dev/null 2>&1; do
     sleep 3
 done
 
+echo "[entrypoint] Seeding the demo catalogue (idempotent)..."
+php bin/console app:seed
+
 echo "[entrypoint] Startup complete — handing over to the web server."
 exec docker-php-entrypoint "$@"
